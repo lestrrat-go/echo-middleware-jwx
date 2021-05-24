@@ -2,6 +2,8 @@
 
 JWT middleware for github.com/labstack/echo using github.com/lestrrat-go/jwx
 
+WARNING: As of this writing, this is a proof of concept. The author does not usually develop web applications using github.com/labstack/echo. This library is provided in hopes that it will help you, but there may be bugs lurking. Contributions are welcome.
+
 # DESCRIPTION
 
 This is pretty much a straight port of `"github.com/labstack/echo/v4/middleware".JWT`, which uses `github.com/lestrrat-go/jwx` instead of `github.com/dgrijalva/jwt-go` to handle the JWT tokens.
