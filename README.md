@@ -6,9 +6,10 @@ WARNING: As of this writing, this is a proof of concept. The author does not usu
 
 # DESCRIPTION
 
-This is pretty much a straight port of `"github.com/labstack/echo/v4/middleware".JWT`, which uses `github.com/lestrrat-go/jwx` instead of `github.com/dgrijalva/jwt-go` to handle the JWT tokens.
+This is pretty much a straight port of `"github.com/labstack/echo/v4/middleware".JWT`.
+The difference is this module uses `github.com/lestrrat-go/jwx` instead of `github.com/dgrijalva/jwt-go` to handle the JWT tokens.
 
-Please note that there are few differences. You are advised to read the code before using it.
+Please note that there _are_ a few differences. You are advised to read the code before using it.
 
 # SYNOPSIS
 
