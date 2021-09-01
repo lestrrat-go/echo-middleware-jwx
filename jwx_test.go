@@ -297,7 +297,7 @@ func TestJWX(t *testing.T) {
 			}
 			req = httptest.NewRequest(http.MethodPost, tc.reqURL, strings.NewReader(form.Encode()))
 			req.Header.Set(echo.HeaderContentType, "application/x-www-form-urlencoded")
-			req.ParseForm()
+			_ = req.ParseForm()
 		} else {
 			req = httptest.NewRequest(http.MethodGet, tc.reqURL, nil)
 		}
@@ -368,8 +368,8 @@ func TestJWXwithKID(t *testing.T) {
 		if !assert.NoError(t, err, `jwk.New for first key should succeed`) {
 			return
 		}
-		key.Set("alg", jwa.HS256)
-		key.Set("kid", strings.Replace(raw, "_secret", "One", 1))
+		_ = key.Set("alg", jwa.HS256)
+		_ = key.Set("kid", strings.Replace(raw, "_secret", "One", 1))
 		keys = append(keys, key)
 	}
 
@@ -487,5 +487,5 @@ func ExampleEcho() {
 		return c.String(http.StatusOK, "Hello, World!")
 	})
 
-	e.Start(":8000")
+	_ = e.Start(":8000")
 }
