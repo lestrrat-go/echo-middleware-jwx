@@ -6,22 +6,20 @@ import (
 	"strings"
 
 	"github.com/labstack/echo/v4"
-	"github.com/lestrrat-go/jwx/jwa"
-	"github.com/lestrrat-go/jwx/jwk"
-	"github.com/lestrrat-go/jwx/jwt"
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
-var (
-	// DefaultConfig is the default JWX auth middleware config.
-	DefaultConfig = Config{
-		Skipper:            DefaultSkipper,
-		SignatureAlgorithm: jwa.HS256,
-		ContextKey:         "user",
-		TokenLookup:        "header:" + echo.HeaderAuthorization,
-		AuthScheme:         "Bearer",
-		TokenFactory:       defaultTokenFactory,
-	}
-)
+// DefaultConfig is the default JWX auth middleware config.
+var DefaultConfig = Config{
+	Skipper:            DefaultSkipper,
+	SignatureAlgorithm: jwa.HS256,
+	ContextKey:         "user",
+	TokenLookup:        "header:" + echo.HeaderAuthorization,
+	AuthScheme:         "Bearer",
+	TokenFactory:       defaultTokenFactory,
+}
 
 func defaultTokenFactory(_ echo.Context) jwt.Token {
 	return jwt.New()
@@ -66,7 +64,7 @@ func (config *Config) parseToken(auth string, c echo.Context) (jwt.Token, error)
 	if ks != nil {
 		options = append(options, jwt.WithKeySet(ks))
 	} else if key != nil {
-		alg := jwa.SignatureAlgorithm(key.Algorithm())
+		alg := jwa.SignatureAlgorithm(key.Algorithm().String())
 		if alg == "" {
 			alg = config.SignatureAlgorithm
 		}
@@ -74,7 +72,7 @@ func (config *Config) parseToken(auth string, c echo.Context) (jwt.Token, error)
 		if alg == "" {
 			return nil, errors.New(`no signature algorithm could be inferred (did you set SignatureAlgorithm, or did you make sure the key has an 'alg' field?)`)
 		}
-		options = append(options, jwt.WithVerify(alg, key))
+		options = append(options, jwt.WithKey(alg, key))
 	} else {
 		return nil, errors.New(`neither jwk.Key nor jwk.Set available`)
 	}
@@ -101,7 +99,7 @@ func JWX(v interface{}) echo.MiddlewareFunc {
 		config.KeySet = v
 	case jwk.Key:
 		config.Key = v
-	case func(echo.Context) (interface{},error):
+	case func(echo.Context) (interface{}, error):
 		config.KeyFunc = v
 	default:
 		panic(fmt.Sprintf("expected jwk.Key or jwk.Set or a KeyFunc: got %T", v))
