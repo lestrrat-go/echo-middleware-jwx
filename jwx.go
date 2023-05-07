@@ -105,10 +105,10 @@ func JWX(v interface{}) echo.MiddlewareFunc {
 		panic(fmt.Sprintf("expected jwk.Key or jwk.Set or a KeyFunc: got %T", v))
 	}
 
-	return WithConfig(config)
+	return WithConfig(&config)
 }
 
-func WithConfig(config Config) echo.MiddlewareFunc {
+func PrepareConfig(config *Config) {
 	if config.Skipper == nil {
 		config.Skipper = DefaultConfig.Skipper
 	}
@@ -152,56 +152,88 @@ func WithConfig(config Config) echo.MiddlewareFunc {
 			extractors = append(extractors, jwxFromHeader(parts[1], config.AuthScheme))
 		}
 	}
+	config.extractors = extractors
+}
 
+func (config *Config) Authenticate(c echo.Context) (bool, error) {
+	if config.Skipper(c) {
+		return true, nil
+	}
+
+	if config.BeforeFunc != nil {
+		config.BeforeFunc(c)
+	}
+	var auth string
+	var err error
+	for _, extractor := range config.extractors {
+		// Extract token from extractor, if it's not fail break the loop and
+		// set auth
+		auth, err = extractor(c)
+		if err == nil {
+			break
+		}
+	}
+	// If none of extractor has a token, handle error
+	if err != nil {
+		if herr, ok := config.handleError(err, c); ok {
+			return false, herr
+		}
+		return false, err
+	}
+	if auth == "" {
+		return false, ErrNoAuth
+	}
+
+	token, err := config.parseToken(auth, c)
+	if err == nil {
+		// Store user information from token into context.
+		c.Set(config.ContextKey, token)
+		if config.SuccessHandler != nil {
+			config.SuccessHandler(c)
+		}
+		return true, nil
+	}
+
+	if herr, ok := config.handleError(err, c); ok {
+		return false, herr
+	}
+
+	return false, &echo.HTTPError{
+		Code:     ErrJWTInvalid.Code,
+		Message:  ErrJWTInvalid.Message,
+		Internal: err,
+	}
+}
+
+func WithConfig(config *Config) echo.MiddlewareFunc {
+	PrepareConfig(config)
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			if config.Skipper(c) {
+			authenticated, err := config.Authenticate(c)
+			if authenticated {
 				return next(c)
 			}
+			return err
+		}
+	}
+}
 
-			if config.BeforeFunc != nil {
-				config.BeforeFunc(c)
-			}
-			var auth string
+func WithAnyConfig(configs []*Config) echo.MiddlewareFunc {
+	for i := range configs {
+		PrepareConfig(configs[i])
+	}
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
 			var err error
-			for _, extractor := range extractors {
-				// Extract token from extractor, if it's not fail break the loop and
-				// set auth
-				auth, err = extractor(c)
-				if err == nil {
-					break
+			var authenticated bool
+			for i := range configs {
+				authenticated, err = configs[i].Authenticate(c)
+				if authenticated {
+					return next(c)
 				}
 			}
-			// If none of extractor has a token, handle error
-			if err != nil {
-				if herr, ok := config.handleError(err, c); ok {
-					return herr
-				}
-				return err
-			}
-			if auth == "" {
-				panic("no auth")
-			}
 
-			token, err := config.parseToken(auth, c)
-			if err == nil {
-				// Store user information from token into context.
-				c.Set(config.ContextKey, token)
-				if config.SuccessHandler != nil {
-					config.SuccessHandler(c)
-				}
-				return next(c)
-			}
-
-			if herr, ok := config.handleError(err, c); ok {
-				return herr
-			}
-
-			return &echo.HTTPError{
-				Code:     ErrJWTInvalid.Code,
-				Message:  ErrJWTInvalid.Message,
-				Internal: err,
-			}
+			return err
 		}
 	}
 }

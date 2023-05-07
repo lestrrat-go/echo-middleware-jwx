@@ -1,6 +1,8 @@
 package jwx
 
 import (
+	"net/http"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -11,6 +13,7 @@ import (
 var (
 	ErrJWTInvalid = middleware.ErrJWTInvalid
 	ErrJWTMissing = middleware.ErrJWTMissing
+	ErrNoAuth     = echo.NewHTTPError(http.StatusUnauthorized, "no auth")
 )
 
 type (
@@ -100,6 +103,9 @@ type Config struct {
 	// Signing algorithm used to verify the signature of the token
 	// Optional. Default value HS256.
 	SignatureAlgorithm jwa.SignatureAlgorithm
+
+	// the actual list of extractors constructed from the configuration options
+	extractors []jwtExtractor
 }
 
 func DefaultSkipper(c echo.Context) bool {
