@@ -13,9 +13,9 @@ import (
 
 	"github.com/labstack/echo/v4"
 	jwx "github.com/lestrrat-go/echo-middleware-jwx"
-	"github.com/lestrrat-go/jwx/jwa"
-	"github.com/lestrrat-go/jwx/jwk"
-	"github.com/lestrrat-go/jwx/jwt"
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,8 +27,8 @@ func TestJWXRace(t *testing.T) {
 	initialToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ"
 	raceToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IlJhY2UgQ29uZGl0aW9uIiwiYWRtaW4iOmZhbHNlfQ.Xzkx9mcgGqYMTkuxSCbJ67lsDyk5J2aB7hu65cEE-Ss"
 	validKey := []byte("secret")
-	key, err := jwk.New(validKey)
-	if !assert.NoError(t, err, `jwk.New should succeed`) {
+	key, err := jwk.FromRaw(validKey)
+	if !assert.NoError(t, err, `jwk.FromRaw should succeed`) {
 		return
 	}
 
@@ -92,12 +92,12 @@ func TestJWX(t *testing.T) {
 	token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ"
 	validRawKey := []byte("secret")
 	invalidRawKey := []byte("invalid-key")
-	validKey, err := jwk.New(validRawKey)
-	if !assert.NoError(t, err, `jwk.New should succeed`) {
+	validKey, err := jwk.FromRaw(validRawKey)
+	if !assert.NoError(t, err, `jwk.FromRaw should succeed`) {
 		return
 	}
-	invalidKey, err := jwk.New(invalidRawKey)
-	if !assert.NoError(t, err, `jwk.New should succeed`) {
+	invalidKey, err := jwk.FromRaw(invalidRawKey)
+	if !assert.NoError(t, err, `jwk.FromRaw should succeed`) {
 		return
 	}
 	validAuth := jwx.DefaultConfig.AuthScheme + " " + token
@@ -364,8 +364,8 @@ func TestJWXwithKID(t *testing.T) {
 
 	var keys []jwk.Key
 	for _, raw := range []string{"first_secret", "second_secret", "third_secret", "static_secret", "invalid_secret"} {
-		key, err := jwk.New([]byte(raw))
-		if !assert.NoError(t, err, `jwk.New for first key should succeed`) {
+		key, err := jwk.FromRaw([]byte(raw))
+		if !assert.NoError(t, err, `jwk.FromRaw for first key should succeed`) {
 			return
 		}
 		_ = key.Set("alg", jwa.HS256)
@@ -375,11 +375,11 @@ func TestJWXwithKID(t *testing.T) {
 
 	validKeys := jwk.NewSet()
 	for i := 0; i < 2; i++ {
-		validKeys.Add(keys[i])
+		validKeys.AddKey(keys[i])
 	}
 
 	invalidKeys := jwk.NewSet()
-	invalidKeys.Add(keys[2])
+	invalidKeys.AddKey(keys[2])
 
 	staticSecret := keys[3]
 	invalidStaticSecret := keys[4]
@@ -475,8 +475,8 @@ func ExampleEcho() {
 
 	e := echo.New()
 
-	ar := jwk.NewAutoRefresh(ctx)
-	ar.Configure(`https://www.googleapis.com/oauth2/v3/certs`, jwk.WithMinRefreshInterval(15*time.Minute))
+	ar := jwk.NewCache(ctx)
+	ar.Register(`https://www.googleapis.com/oauth2/v3/certs`, jwk.WithMinRefreshInterval(15*time.Minute))
 	ks, err := ar.Refresh(ctx, googleCerts)
 	if err != nil {
 		panic(fmt.Sprintf("failed to refresh google JWKS: %s\n", err))
